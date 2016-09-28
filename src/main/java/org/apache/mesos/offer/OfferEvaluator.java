@@ -119,7 +119,7 @@ public class OfferEvaluator {
             Collection<ResourceRequirement> resReqs = taskReq.getResourceRequirements();
             FulfilledRequirement fulfilledTaskRequirement;
 
-            if (offerRequirement.getServicePorts() != null && servicePorts == null) {
+            if (offerRequirement.getServicePorts() != null && offerRequirement.getServicePorts().size() > 0 && servicePorts == null) {
                 return Collections.emptyList();
             } else if (servicePorts != null) {
                 resReqs = mergeServicePorts(resReqs, servicePorts);
@@ -468,7 +468,7 @@ public class OfferEvaluator {
                 execBuilder.addAllResources(execInfo.getResourcesList());
             }
 
-            if (execBuilder.hasCommand()) {
+            if (servicePorts != null && execBuilder.hasCommand()) {
                 Protos.Environment.Builder envBuilder = Protos.Environment.newBuilder(
                         execBuilder.getCommand().getEnvironment());
                 for (Map.Entry<String, Long> entry : servicePorts.entrySet()) {
@@ -484,7 +484,7 @@ public class OfferEvaluator {
             taskBuilder.setExecutor(execBuilder.build());
         }
 
-        if (execInfo == null || !execInfo.hasCommand()) {
+        if (servicePorts != null && (execInfo == null || !execInfo.hasCommand())) {
             Protos.Environment.Builder envBuilder = Protos.Environment.newBuilder(
                     taskBuilder.getCommand().getEnvironment());
             for (Map.Entry<String, Long> entry : servicePorts.entrySet()) {
