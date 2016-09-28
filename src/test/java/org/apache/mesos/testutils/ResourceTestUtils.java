@@ -80,6 +80,15 @@ public class ResourceTestUtils {
             Arrays.asList(Protos.Value.Range.newBuilder().setBegin(begin).setEnd(end).build()));
   }
 
+  public static final Resource getExpectedRanges(String name, long begin, long end, String resourceId) {
+    return ResourceUtils.getExpectedRanges(
+            name,
+            Arrays.asList(Protos.Value.Range.newBuilder().setBegin(begin).setEnd(end).build()),
+            resourceId,
+            TestConstants.role,
+            TestConstants.principal);
+  }
+
   public static Resource getUnreservedCpu(double cpus) {
     return ResourceUtils.getUnreservedScalar("cpus", cpus);
   }
@@ -90,6 +99,11 @@ public class ResourceTestUtils {
 
   public static Resource getUnreservedDisk(double disk) {
     return ResourceUtils.getUnreservedScalar("disk", disk);
+  }
+
+  public static Resource getUnreservedRanges(String name, long begin, long end) {
+      return ResourceUtils.getUnreservedRanges(
+              name, Arrays.asList(Protos.Value.Range.newBuilder().setBegin(begin).setEnd(end).build()));
   }
 
   public static Resource getExpectedCpu(double cpus) {

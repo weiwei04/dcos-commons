@@ -25,13 +25,15 @@ public class DefaultOfferRequirementProvider implements OfferRequirementProvider
                 .addAllResources(getNewResources(taskSpecification))
                 .build();
 
-        return new OfferRequirement(Arrays.asList(taskInfo));
+        return new OfferRequirement(Arrays.asList(taskInfo), taskSpecification.getServicePorts());
     }
 
     @Override
     public OfferRequirement getExistingOfferRequirement(Protos.TaskInfo taskInfo, TaskSpecification taskSpecification)
             throws InvalidRequirementException {
 
+        // TODO(mrb): Change this too -- I think we need to scour the TaskInfo, pull env values that match the service ports
+        // in the taskSpec, and then add them as new port resources, unless they're already in the taskINfo?
         validateVolumes(taskInfo, taskSpecification);
         Map<String, Protos.Resource> oldResourceMap = getResourceMap(taskInfo.getResourcesList());
 

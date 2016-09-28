@@ -14,12 +14,14 @@ public class TestTaskSpecification implements TaskSpecification {
     private final Protos.CommandInfo command;
     private final Collection<VolumeSpecification> volumes;
     private Collection<ResourceSpecification> resources;
+    private Collection<String> servicePorts;
 
     public TestTaskSpecification(TaskSpecification taskSpecification) {
         this.name = taskSpecification.getName();
         this.command = taskSpecification.getCommand();
         this.resources = taskSpecification.getResources();
         this.volumes = taskSpecification.getVolumes();
+        this.servicePorts = taskSpecification.getServicePorts();
     }
 
     @Override
@@ -40,6 +42,11 @@ public class TestTaskSpecification implements TaskSpecification {
     @Override
     public Collection<VolumeSpecification> getVolumes() {
         return volumes;
+    }
+
+    @Override
+    public Collection<String> getServicePorts() {
+        return servicePorts;
     }
 
     public void addResource(ResourceSpecification resourceSpecification) {

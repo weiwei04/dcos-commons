@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import com.google.protobuf.TextFormat;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The OfferEvaluator processes {@link Offer}s and produces {@link OfferRecommendation}s.
@@ -111,8 +113,19 @@ public class OfferEvaluator {
         }
 
         for (TaskRequirement taskReq : offerRequirement.getTaskRequirements()) {
-            FulfilledRequirement fulfilledTaskRequirement =
-                FulfilledRequirement.fulfillRequirement(taskReq.getResourceRequirements(), offer, pool);
+            // Now that we have the offer, add the ports to the resource requirement.
+            Map<String, Long> servicePorts = getServicePortAssignments(
+                    offerRequirement.getServicePorts(), offer, taskReq);
+            Collection<ResourceRequirement> resReqs = taskReq.getResourceRequirements();
+            FulfilledRequirement fulfilledTaskRequirement;
+
+            if (offerRequirement.getServicePorts() != null && servicePorts == null) {
+                return Collections.emptyList();
+            } else if (servicePorts != null) {
+                resReqs = mergeServicePorts(resReqs, servicePorts);
+            }
+
+            fulfilledTaskRequirement = FulfilledRequirement.fulfillRequirement(resReqs, offer, pool);
 
             if (fulfilledTaskRequirement == null) {
                 return Collections.emptyList();
@@ -129,7 +142,8 @@ public class OfferEvaluator {
                         taskReq,
                         fulfilledTaskRequirement,
                         execInfo,
-                        fulfilledExecutorRequirement)));
+                        fulfilledExecutorRequirement,
+                        servicePorts)));
         }
 
         List<OfferRecommendation> recommendations = new ArrayList<OfferRecommendation>();
@@ -139,6 +153,106 @@ public class OfferEvaluator {
         recommendations.addAll(launches);
 
         return recommendations;
+    }
+
+    private Collection<ResourceRequirement> mergeServicePorts(
+            Collection<ResourceRequirement> resourceRequirements, Map<String, Long> servicePorts) {
+        ResourceRequirement portRequirement = null;
+        for (ResourceRequirement r : resourceRequirements) {
+            if (r.getName() == "ports") {
+                portRequirement = r;
+            }
+        }
+
+        Value.Ranges.Builder servicePortRanges = Value.Ranges.newBuilder();
+        for (Long p : servicePorts.values()) {
+            servicePortRanges.addRange(Value.Range.newBuilder().setBegin(p).setEnd(p));
+        }
+
+        Resource portResource = null;
+        if (portRequirement != null) {
+            portResource = Resource.newBuilder(portRequirement.getResource())
+                                   .mergeRanges(servicePortRanges.build())
+                                   .build();
+        } else {
+            Resource reference = resourceRequirements.iterator().next().getResource();
+            Resource.Builder resourceBuilder = Resource.newBuilder()
+                                   .setName("ports")
+                                   .setType(Value.Type.RANGES)
+                                   .setRanges(servicePortRanges.build());
+
+            if (reference.hasReservation()) {
+                resourceBuilder.setReservation(reference.getReservation());
+            }
+            if (reference.hasRole()) {
+                resourceBuilder.setRole(reference.getRole());
+            }
+            portResource = resourceBuilder.build();
+        }
+
+        return Stream.concat(
+                        resourceRequirements.stream().filter(r -> r.getName() != "ports"),
+                        Stream.of(new ResourceRequirement(portResource)))
+                     .collect(Collectors.toList());
+    }
+
+    private Boolean isInRanges(Long value, Value.Ranges ranges) {
+        Boolean isInRange = false;
+        for (Value.Range r : ranges.getRangeList()) {
+            if (value < r.getBegin()) {
+                break;
+            } else if (value >= r.getBegin() && value <= r.getEnd()) {
+                isInRange = true;
+                break;
+            }
+        }
+
+        return isInRange;
+    }
+
+    private Map<String, Long> getServicePortAssignments(
+            Collection<String> servicePorts, Offer offer, TaskRequirement taskReq) {
+        Iterator<Value.Range> offerRanges = null;
+
+        for (Resource r : offer.getResourcesList()) {
+            if (r.getName() == "ports") {
+                offerRanges = r.getRanges().getRangeList().iterator();
+            }
+        }
+
+        Value.Ranges requiredRanges = null;
+        for (ResourceRequirement r : taskReq.getResourceRequirements()) {
+            if (r.getName() == "ports") {
+                requiredRanges = r.getResource().getRanges();
+            }
+        }
+
+        if (offerRanges == null) {
+            return null;
+        }
+
+        Map<String, Long> assignments = new HashMap<>();
+        Iterator<String> portNameIterator = servicePorts.iterator();
+        Value.Range currentOffer = offerRanges.next();
+        String currentPortName = portNameIterator.next();
+        Long currentPort = currentOffer.getBegin();
+
+        while (assignments.size() < servicePorts.size()) {
+            if (currentPort > currentOffer.getEnd()) {
+                if (!offerRanges.hasNext()) {
+                    // We weren't offered enough ports to assign all of our service ports, so abort and return null.
+                    break;
+                }
+                currentOffer = offerRanges.next();
+            }
+            if (requiredRanges == null || !isInRanges(currentPort, requiredRanges)) {
+                assignments.put(currentPortName, currentPort);
+                currentPortName = portNameIterator.hasNext() ? portNameIterator.next() : null;
+                ++currentPort;
+            }
+        }
+
+        return assignments.size() == servicePorts.size() ? assignments : null;
     }
 
     private static class FulfilledRequirement {
@@ -332,7 +446,8 @@ public class OfferEvaluator {
             TaskRequirement taskReq,
             FulfilledRequirement fulfilledTaskRequirement,
             ExecutorInfo execInfo,
-            FulfilledRequirement fulfilledExecutorRequirement) {
+            FulfilledRequirement fulfilledExecutorRequirement,
+            Map<String, Long> servicePorts) {
 
         TaskInfo taskInfo = taskReq.getTaskInfo();
         List<Resource> fulfilledTaskResources = fulfilledTaskRequirement.getFulfilledResources();
@@ -353,7 +468,33 @@ public class OfferEvaluator {
                 execBuilder.addAllResources(execInfo.getResourcesList());
             }
 
+            if (execBuilder.hasCommand()) {
+                Protos.Environment.Builder envBuilder = Protos.Environment.newBuilder(
+                        execBuilder.getCommand().getEnvironment());
+                for (Map.Entry<String, Long> entry : servicePorts.entrySet()) {
+                    envBuilder.addVariables(
+                            Protos.Environment.Variable.newBuilder()
+                                                       .setName(entry.getKey())
+                                                       .setValue(entry.getValue().toString()));
+                }
+                execBuilder.setCommand(
+                        Protos.CommandInfo.newBuilder(execBuilder.getCommand()).setEnvironment(envBuilder));
+            }
+
             taskBuilder.setExecutor(execBuilder.build());
+        }
+
+        if (execInfo == null || !execInfo.hasCommand()) {
+            Protos.Environment.Builder envBuilder = Protos.Environment.newBuilder(
+                    taskBuilder.getCommand().getEnvironment());
+            for (Map.Entry<String, Long> entry : servicePorts.entrySet()) {
+                envBuilder.addVariables(
+                        Protos.Environment.Variable.newBuilder()
+                                .setName(entry.getKey())
+                                .setValue(entry.getValue().toString()));
+            }
+
+            taskBuilder.setCommand(Protos.CommandInfo.newBuilder(taskBuilder.getCommand()).setEnvironment(envBuilder));
         }
 
         return taskBuilder.build();

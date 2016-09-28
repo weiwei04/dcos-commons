@@ -22,6 +22,7 @@ public class CustomTaskTypeSpecificationTest {
                 "custom",
                 null,
                 Collections.emptyList(),
+                Collections.emptyList(),
                 Collections.emptyList());
 
         int id = random.nextInt(taskCount);
@@ -35,8 +36,9 @@ public class CustomTaskTypeSpecificationTest {
                 String name,
                 Protos.CommandInfo command,
                 Collection<ResourceSpecification> resources,
-                Collection<VolumeSpecification> volumes) {
-            super(count, name, command, resources, volumes);
+                Collection<VolumeSpecification> volumes,
+                Collection<String> servicePorts) {
+            super(count, name, command, resources, volumes, servicePorts);
         }
 
         @Override

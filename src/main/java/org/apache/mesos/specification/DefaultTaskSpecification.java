@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 
 /**
  * This class provides a default implementation of the TaskSpecification interface.
@@ -19,13 +20,15 @@ public class DefaultTaskSpecification implements TaskSpecification {
     private final Protos.CommandInfo commandInfo;
     private final Collection<ResourceSpecification> resourceSpecifications;
     private final Collection<VolumeSpecification> volumeSpecifications;
+    private final Collection<String> servicePorts;
 
     public static DefaultTaskSpecification create(Protos.TaskInfo taskInfo) throws InvalidTaskSpecificationException {
         return new DefaultTaskSpecification(
                 taskInfo.getName(),
                 taskInfo.getCommand(),
                 getResources(taskInfo),
-                getVolumes(taskInfo));
+                getVolumes(taskInfo),
+                Collections.emptyList());
     }
 
     public static DefaultTaskSpecification create(TaskTypeSpecification taskTypeSpecification, int index) {
@@ -33,18 +36,21 @@ public class DefaultTaskSpecification implements TaskSpecification {
                 taskTypeSpecification.getName() + "-" + index,
                 taskTypeSpecification.getCommand(index),
                 taskTypeSpecification.getResources(),
-                taskTypeSpecification.getVolumes());
+                taskTypeSpecification.getVolumes(),
+                taskTypeSpecification.getServicePorts());
     }
 
     protected DefaultTaskSpecification(
             String name,
             Protos.CommandInfo commandInfo,
             Collection<ResourceSpecification> resourceSpecifications,
-            Collection<VolumeSpecification> volumeSpecifications) {
+            Collection<VolumeSpecification> volumeSpecifications,
+            Collection<String> servicePorts) {
         this.name = name;
         this.commandInfo = commandInfo;
         this.resourceSpecifications = resourceSpecifications;
         this.volumeSpecifications = volumeSpecifications;
+        this.servicePorts = servicePorts;
     }
 
     @Override
@@ -65,6 +71,11 @@ public class DefaultTaskSpecification implements TaskSpecification {
     @Override
     public Collection<VolumeSpecification> getVolumes() {
         return volumeSpecifications;
+    }
+
+    @Override
+    public Collection<String> getServicePorts() {
+        return servicePorts;
     }
 
     private static Collection<ResourceSpecification> getResources(Protos.TaskInfo taskInfo) {

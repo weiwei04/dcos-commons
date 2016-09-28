@@ -12,4 +12,5 @@ public interface TaskSpecification {
     Protos.CommandInfo getCommand();
     Collection<ResourceSpecification> getResources();
     Collection<VolumeSpecification> getVolumes();
+    Collection<String> getServicePorts();
 }

@@ -19,13 +19,19 @@ public class OfferRequirementTestUtils {
     }
 
     public static OfferRequirement getOfferRequirement(
+            List<Protos.Resource> resources, List<String> servicePorts) throws InvalidRequirementException {
+        return new OfferRequirement(Arrays.asList(TaskTestUtils.getTaskInfo(resources)), servicePorts);
+    }
+
+    public static OfferRequirement getOfferRequirement(
             Protos.Resource resource, List<String> avoidAgents, List<String> collocateAgents)
             throws InvalidRequirementException {
         return new OfferRequirement(
                 Arrays.asList(TaskTestUtils.getTaskInfo(resource)),
                 Optional.empty(),
                 toSlaveIds(avoidAgents),
-                toSlaveIds(collocateAgents));
+                toSlaveIds(collocateAgents),
+                Collections.emptyList());
     }
 
     private static Collection<Protos.SlaveID> toSlaveIds(List<String> ids) {

@@ -5,10 +5,7 @@ import org.apache.mesos.Protos.ExecutorInfo;
 import org.apache.mesos.Protos.SlaveID;
 import org.apache.mesos.Protos.TaskInfo;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * An OfferRequirement encapsulates the needed resources an Offer must have.
@@ -24,13 +21,15 @@ public class OfferRequirement {
     private Collection<SlaveID> colocateAgents;
     private Collection<TaskRequirement> taskRequirements;
     private ExecutorRequirement executorRequirement;
+    private Collection<String> servicePorts;
 
     public OfferRequirement(
-        Collection<TaskInfo> taskInfos,
-        Optional<ExecutorInfo> executorInfoOptional,
-        Collection<SlaveID> avoidAgents,
-        Collection<SlaveID> colocateAgents)
-        throws InvalidRequirementException {
+            Collection<TaskInfo> taskInfos,
+            Optional<ExecutorInfo> executorInfoOptional,
+            Collection<SlaveID> avoidAgents,
+            Collection<SlaveID> colocateAgents,
+            Collection<String> servicePorts)
+            throws InvalidRequirementException {
         this.taskRequirements = getTaskRequirementsInternal(taskInfos);
         if (executorInfoOptional.isPresent()) {
             this.executorRequirement = ExecutorRequirement.create(executorInfoOptional.get());
@@ -47,15 +46,31 @@ public class OfferRequirement {
         } else {
             this.colocateAgents = colocateAgents;
         }
+
+        if (servicePorts == null) {
+            this.servicePorts = Collections.emptyList();
+        } else {
+            this.servicePorts = servicePorts;
+        }
     }
 
     public OfferRequirement(Collection<TaskInfo> taskInfos) throws InvalidRequirementException {
-        this(taskInfos, Optional.empty(), Collections.emptyList(), Collections.emptyList());
+        this(taskInfos, Optional.empty(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     }
 
     public OfferRequirement(Collection<TaskInfo> taskInfos, Optional<ExecutorInfo> executorInfoOptional)
             throws InvalidRequirementException {
-        this(taskInfos, executorInfoOptional, Collections.emptyList(), Collections.emptyList());
+        this(
+                taskInfos,
+                executorInfoOptional,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList());
+    }
+
+    public OfferRequirement(Collection<TaskInfo> taskInfos, Collection<String> servicePorts)
+            throws InvalidRequirementException {
+        this(taskInfos, Optional.empty(), Collections.emptyList(), Collections.emptyList(), servicePorts);
     }
 
     public Collection<TaskRequirement> getTaskRequirements() {
@@ -100,6 +115,10 @@ public class OfferRequirement {
         }
 
         return persistenceIds;
+    }
+
+    public Collection<String> getServicePorts() {
+        return servicePorts;
     }
 
     private static Collection<TaskRequirement> getTaskRequirementsInternal(

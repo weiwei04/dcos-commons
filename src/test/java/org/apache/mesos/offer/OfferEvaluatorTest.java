@@ -15,6 +15,33 @@ public class OfferEvaluatorTest {
     private static final OfferEvaluator evaluator = new OfferEvaluator();
 
     @Test
+    public void testDesiredServicePorts() throws Exception {
+        Resource desiredResource = ResourceTestUtils.getDesiredMountVolume(1500);
+        Resource offeredResource = ResourceTestUtils.getUnreservedMountVolume(2000);
+        Resource portsResource = ResourceTestUtils.getUnreservedRanges("ports", 10000, 10005);
+
+        List<OfferRecommendation> recommendations = evaluator.evaluate(
+                OfferRequirementTestUtils.getOfferRequirement(Arrays.asList(desiredResource), Arrays.asList("PORT1", "PORT2")),
+                Arrays.asList(OfferTestUtils.getOffer(Arrays.asList(offeredResource, portsResource))));
+        Assert.assertEquals(4, recommendations.size());
+
+        Operation launchOperation = recommendations.get(3).getOperation();
+        Resource launchResource =
+                launchOperation
+                        .getLaunch()
+                        .getTaskInfosList()
+                        .get(0)
+                        .getResourcesList()
+                        .get(0);
+
+        //add port assertions
+        Assert.assertEquals(Operation.Type.LAUNCH, launchOperation.getType());
+        Assert.assertEquals(TestConstants.mountRoot, launchResource.getDisk().getSource().getMount().getRoot());
+        Assert.assertEquals(TestConstants.principal, launchResource.getDisk().getPersistence().getPrincipal());
+        Assert.assertEquals(2000, launchResource.getScalar().getValue(), 0.0);
+    }
+
+    @Test
     public void testReserveTaskExecutorInsufficient() throws InvalidRequirementException {
         Resource desiredTaskCpu = ResourceTestUtils.getDesiredCpu(1.0);
         Resource desiredExecutorCpu = desiredTaskCpu;
@@ -24,6 +51,7 @@ public class OfferEvaluatorTest {
         OfferRequirement offerReq = new OfferRequirement(
                         Arrays.asList(TaskTestUtils.getTaskInfo(desiredTaskCpu)),
                         Optional.of(TaskTestUtils.getExecutorInfo(desiredExecutorCpu)),
+                        null,
                         null,
                         null);
         List<Offer> offers = Arrays.asList(OfferTestUtils.getOffer(insufficientOfferedResource));
