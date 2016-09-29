@@ -21,11 +21,12 @@ public class OfferEvaluatorTest {
         Resource portsResource = ResourceTestUtils.getUnreservedRanges("ports", 10000, 10005);
 
         List<OfferRecommendation> recommendations = evaluator.evaluate(
-                OfferRequirementTestUtils.getOfferRequirement(Arrays.asList(desiredResource), Arrays.asList("PORT1", "PORT2")),
+                OfferRequirementTestUtils.getOfferRequirement(
+                        Arrays.asList(desiredResource), Arrays.asList("PORT1", "PORT2")),
                 Arrays.asList(OfferTestUtils.getOffer(Arrays.asList(offeredResource, portsResource))));
-        Assert.assertEquals(4, recommendations.size());
+        Assert.assertEquals(3, recommendations.size());
 
-        Operation launchOperation = recommendations.get(3).getOperation();
+        Operation launchOperation = recommendations.get(2).getOperation();
         Resource launchResource =
                 launchOperation
                         .getLaunch()

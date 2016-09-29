@@ -78,12 +78,23 @@ public class OfferEvaluator {
 
         ExecutorRequirement execReq = offerRequirement.getExecutorRequirement();
         FulfilledRequirement fulfilledExecutorRequirement = null;
+        Map<String, Long> servicePorts = null;
         if (execReq != null) {
             if (execReq.desiresResources() || execReq.getExecutorInfo().getExecutorId().getValue().isEmpty()) {
+                servicePorts = getServicePortAssignments(offerRequirement.getServicePorts(), offer, execReq);
+                Collection<ResourceRequirement> resReqs = execReq.getResourceRequirements();
+
+                if (offerRequirement.getServicePorts() != null &&
+                        offerRequirement.getServicePorts().size() > 0 && servicePorts == null) {
+                    return Collections.emptyList();
+                } else if (servicePorts != null) {
+                    resReqs = mergeServicePorts(resReqs, servicePorts);
+                }
+
                 fulfilledExecutorRequirement = FulfilledRequirement.fulfillRequirement(
-                                execReq.getResourceRequirements(),
-                                offer,
-                                pool);
+                        resReqs,
+                        offer,
+                        pool);
 
                 if (fulfilledExecutorRequirement == null) {
                     return Collections.emptyList();
@@ -105,27 +116,35 @@ public class OfferEvaluator {
         ExecutorInfo execInfo = null;
         if (execReq != null) {
             execInfo = execReq.getExecutorInfo();
-            if (execInfo.getExecutorId().getValue().isEmpty()) {
-                execInfo = ExecutorInfo.newBuilder(execInfo)
-                                .setExecutorId(ExecutorUtils.toExecutorId(execInfo.getName()))
-                                .build();
+            if (execInfo.hasCommand() && servicePorts != null && execInfo.getExecutorId().getValue().isEmpty()) {
+                ExecutorInfo.Builder execBuilder = ExecutorInfo.newBuilder(execInfo);
+
+                if (execInfo.hasCommand() && servicePorts != null) {
+                    Protos.Environment.Builder envBuilder;
+                    if (execInfo.getCommand().hasEnvironment()) {
+                        envBuilder = Protos.Environment.newBuilder(execInfo.getCommand().getEnvironment());
+                    } else {
+                        envBuilder = Protos.Environment.newBuilder();
+                    }
+
+                    for (Map.Entry<String, Long> e : servicePorts.entrySet()) {
+                        envBuilder.addVariables(
+                                Protos.Environment.Variable.newBuilder()
+                                        .setName(e.getKey())
+                                        .setValue(e.getValue().toString()));
+                    }
+
+                    execBuilder.setCommand(
+                            Protos.CommandInfo.newBuilder(execInfo.getCommand()).setEnvironment(envBuilder));
+                }
+
+                execInfo = execBuilder.setExecutorId(ExecutorUtils.toExecutorId(execInfo.getName())).build();
             }
         }
 
         for (TaskRequirement taskReq : offerRequirement.getTaskRequirements()) {
-            // Now that we have the offer, add the ports to the resource requirement.
-            Map<String, Long> servicePorts = getServicePortAssignments(
-                    offerRequirement.getServicePorts(), offer, taskReq);
-            Collection<ResourceRequirement> resReqs = taskReq.getResourceRequirements();
-            FulfilledRequirement fulfilledTaskRequirement;
-
-            if (offerRequirement.getServicePorts() != null && offerRequirement.getServicePorts().size() > 0 && servicePorts == null) {
-                return Collections.emptyList();
-            } else if (servicePorts != null) {
-                resReqs = mergeServicePorts(resReqs, servicePorts);
-            }
-
-            fulfilledTaskRequirement = FulfilledRequirement.fulfillRequirement(resReqs, offer, pool);
+            FulfilledRequirement fulfilledTaskRequirement = FulfilledRequirement.fulfillRequirement(
+                    taskReq.getResourceRequirements(), offer, pool);
 
             if (fulfilledTaskRequirement == null) {
                 return Collections.emptyList();
@@ -142,8 +161,7 @@ public class OfferEvaluator {
                         taskReq,
                         fulfilledTaskRequirement,
                         execInfo,
-                        fulfilledExecutorRequirement,
-                        servicePorts)));
+                        fulfilledExecutorRequirement)));
         }
 
         List<OfferRecommendation> recommendations = new ArrayList<OfferRecommendation>();
@@ -211,7 +229,7 @@ public class OfferEvaluator {
     }
 
     private Map<String, Long> getServicePortAssignments(
-            Collection<String> servicePorts, Offer offer, TaskRequirement taskReq) {
+            Collection<String> servicePorts, Offer offer, ExecutorRequirement execReq) {
         Iterator<Value.Range> offerRanges = null;
 
         for (Resource r : offer.getResourcesList()) {
@@ -221,7 +239,7 @@ public class OfferEvaluator {
         }
 
         Value.Ranges requiredRanges = null;
-        for (ResourceRequirement r : taskReq.getResourceRequirements()) {
+        for (ResourceRequirement r : execReq.getResourceRequirements()) {
             if (r.getName() == "ports") {
                 requiredRanges = r.getResource().getRanges();
             }
@@ -446,8 +464,7 @@ public class OfferEvaluator {
             TaskRequirement taskReq,
             FulfilledRequirement fulfilledTaskRequirement,
             ExecutorInfo execInfo,
-            FulfilledRequirement fulfilledExecutorRequirement,
-            Map<String, Long> servicePorts) {
+            FulfilledRequirement fulfilledExecutorRequirement) {
 
         TaskInfo taskInfo = taskReq.getTaskInfo();
         List<Resource> fulfilledTaskResources = fulfilledTaskRequirement.getFulfilledResources();
@@ -468,33 +485,7 @@ public class OfferEvaluator {
                 execBuilder.addAllResources(execInfo.getResourcesList());
             }
 
-            if (servicePorts != null && execBuilder.hasCommand()) {
-                Protos.Environment.Builder envBuilder = Protos.Environment.newBuilder(
-                        execBuilder.getCommand().getEnvironment());
-                for (Map.Entry<String, Long> entry : servicePorts.entrySet()) {
-                    envBuilder.addVariables(
-                            Protos.Environment.Variable.newBuilder()
-                                                       .setName(entry.getKey())
-                                                       .setValue(entry.getValue().toString()));
-                }
-                execBuilder.setCommand(
-                        Protos.CommandInfo.newBuilder(execBuilder.getCommand()).setEnvironment(envBuilder));
-            }
-
             taskBuilder.setExecutor(execBuilder.build());
-        }
-
-        if (servicePorts != null && (execInfo == null || !execInfo.hasCommand())) {
-            Protos.Environment.Builder envBuilder = Protos.Environment.newBuilder(
-                    taskBuilder.getCommand().getEnvironment());
-            for (Map.Entry<String, Long> entry : servicePorts.entrySet()) {
-                envBuilder.addVariables(
-                        Protos.Environment.Variable.newBuilder()
-                                .setName(entry.getKey())
-                                .setValue(entry.getValue().toString()));
-            }
-
-            taskBuilder.setCommand(Protos.CommandInfo.newBuilder(taskBuilder.getCommand()).setEnvironment(envBuilder));
         }
 
         return taskBuilder.build();
