@@ -12,3 +12,4 @@ elif [ "$KERNEL" = "Darwin" ]; then
 else
     echo "Unknown kernel for route configuration: $KERNEL (from 'uname -a')"
 fi
+echo ">>> Routing updated. You might need to reopen open browsers to access the cluster."

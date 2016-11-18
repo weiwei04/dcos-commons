@@ -4,7 +4,7 @@ Mesosphere DCOS Commons
 [![Build Status](https://jenkins.mesosphere.com/service/jenkins/buildStatus/icon?job=dcos-commons/infinity-dcos-commons-master)](https://jenkins.mesosphere.com/service/jenkins/job/dcos-commons/job/infinity-dcos-commons-master/)
 
 This project is a collection of classes and utilities necessary for building a DCOS service.  It is written in Java and
-is Java 1.8+ compatible. 
+is Java 1.8+ compatible.
 
 Quick start
 --------------------------
@@ -21,6 +21,7 @@ These steps will launch a 3 Agent DC/OS cluster within a VM on your local system
 
 1. `git clone https://github.com/mesosphere/dcos-commons.git`
 2. `cd dcos-commons/ && ./build-dcos-docker.sh`
+  - Alternate: `cd dcos-commons/ && ./get-dcos-docker.sh`
 3. Visit http://172.17.0.2/ to view the cluster dashboard.
 4. `cd dcos-docker/ && vagrant ssh`
 5. `cd /dcos-commons/frameworks/helloworld/ && ./build.sh local`

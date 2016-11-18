@@ -2,8 +2,8 @@
 
 if [ -z $1 ]; then
 	echo "You must provide the name of the project as the first argument"
-	echo "Usage: ./new-service <dir-path>/<project-name>"
-	echo "Example: ./new-service examples/kafka"
+	echo "Usage: $0 <dir-path>/<project-name>"
+	echo "Example: $0 examples/kafka"
 	exit 1
 elif [ -d $1 ]; then
 	echo "A project with the given name already exists. Choose a different name"

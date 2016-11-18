@@ -172,17 +172,13 @@ fi
 EOF
 chmod +x start-dcos.sh
 # copy makefile (+ file dependency) from dcos-docker repo for 'kick':
-vagrant ssh -c "cp /vagrant/start-dcos.sh /vagrant/Makefile /vagrant/common.mk ~"
+vagrant ssh -c "cp -v /vagrant/start-dcos.sh /vagrant/Makefile /vagrant/common.mk ~"
 
-${SCRIPT_DIR}/node-route.sh
+rm -f dcos-docker-sdk.box
+vagrant package --output dcos-docker-sdk.box
+ls -l $(pwd)/dcos-docker-sdk.box
+vagrant destroy -f
 
 echo "----"
-echo "Dashboard URL:  ${CLUSTER_URL}"
-echo ""
-echo "Log into VM:    pushd ${DCOS_DOCKER_DIR} && vagrant ssh && popd"
-echo "Build example:  Log into VM, then: cd /dcos-commons/frameworks/helloworld && ./build.sh local"
-echo ""
-echo "Rebuild routes: ${SCRIPT_DIR}/node-route.sh"
-echo "Delete VM:      pushd ${DCOS_DOCKER_DIR} && vagrant destroy && popd"
-echo "Delete data:    rm -rf ${DCOS_DOCKER_DIR}"
-echo "---"
+echo "Image:   ${DCOS_DOCKER_DIR}/dcos-docker-sdk.box"
+echo "----"
