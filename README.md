@@ -14,8 +14,8 @@ These steps will launch a 3 Agent DC/OS cluster within a VM on your local system
 #### Prerequisites
  - A workstation with 8GB memory
  - Git
- - [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
- - [Vagrant](https://www.vagrantup.com/downloads.html)
+ - [VirtualBox 5.0.x](https://www.virtualbox.org/wiki/Download_Old_Builds_5_0)
+ - [Vagrant 1.8.4](https://releases.hashicorp.com/vagrant/)
 
 #### Steps
 
