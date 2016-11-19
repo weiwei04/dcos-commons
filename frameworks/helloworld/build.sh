@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # capture anonymous metrics for reporting
-curl --fail https://mesosphere.com/wp-content/themes/mesosphere/library/images/assets/sdk/build-sh-start.png >/dev/null 2>&1
+curl https://mesosphere.com/wp-content/themes/mesosphere/library/images/assets/sdk/build-sh-start.png >/dev/null 2>&1
 
 # Prevent jenkins from immediately killing the script when a step fails, allowing us to notify github:
 set +e
@@ -59,5 +59,5 @@ if [ -n "$PUBLISH_SCRIPT" ]; then
 fi
 
 # capture anonymous metrics for reporting
-curl --fail https://mesosphere.com/wp-content/themes/mesosphere/library/images/assets/sdk/build-sh-finish.png >/dev/null 2>&1
+curl https://mesosphere.com/wp-content/themes/mesosphere/library/images/assets/sdk/build-sh-finish.png >/dev/null 2>&1
 
